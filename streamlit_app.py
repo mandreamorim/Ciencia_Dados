@@ -9,7 +9,6 @@ from wordcloud import WordCloud
 
 st.set_page_config(layout="wide", page_title="Análise de Reclamações")
 
-# Sidebar - Navegação
 st.sidebar.title("Navegação")
 aba_selecionada = st.sidebar.radio(
     "Escolha a Análise:",
@@ -36,17 +35,13 @@ def load_data(path):
     data = pd.read_csv(path)
     return data
 
-# FUNÇÃO DOS FILTROS
 def aplicar_filtros_globais(df):
     df = df.copy()
 
-    # Garantir que descrição seja string
     df['DESCRICAO'] = df['DESCRICAO'].fillna('').astype(str)
 
-    # Criar coluna com tamanho do texto
     df['TAMANHO_TEXTO'] = df['DESCRICAO'].str.len()
 
-    # Criar faixas de tamanho
     bins = [0, 100, 300, 600, float('inf')]
     labels = ['Curto (0-100)', 'Médio (101-300)', 'Longo (301-600)', 'Muito Longo (600+)']
 
@@ -59,9 +54,7 @@ def aplicar_filtros_globais(df):
 
     st.sidebar.markdown("## Filtros Globais")
 
-    # =========================
-    # FILTRO DE ESTADO
-    # =========================
+
     estados = sorted(df['ESTADO'].dropna().unique())
     estados_selecionados = st.sidebar.multiselect(
         "Estado",
@@ -69,9 +62,7 @@ def aplicar_filtros_globais(df):
         default=estados
     )
 
-    # =========================
-    # FILTRO DE STATUS
-    # =========================
+
     status_opcoes = sorted(df['STATUS'].dropna().unique())
     status_selecionados = st.sidebar.multiselect(
         "Status",
@@ -79,9 +70,7 @@ def aplicar_filtros_globais(df):
         default=status_opcoes
     )
 
-    # =========================
-    # FILTRO DE TAMANHO DO TEXTO
-    # =========================
+  
     faixas_texto = labels
     faixas_selecionadas = st.sidebar.multiselect(
         "Faixa de tamanho do texto",
@@ -89,9 +78,7 @@ def aplicar_filtros_globais(df):
         default=faixas_texto
     )
 
-    # =========================
-    # APLICAR FILTROS
-    # =========================
+    
     df_filtrado = df[
         (df['ESTADO'].isin(estados_selecionados)) &
         (df['STATUS'].isin(status_selecionados)) &
@@ -101,13 +88,6 @@ def aplicar_filtros_globais(df):
     return df_filtrado
 
 
-# # --- LÓGICA DE PROCESSAMENTO ---
-# def process_data(df):
-#     # Insira aqui suas transformações, limpeza e engenharia de features
-#     return df
-
-
-# --- INTERFACE DO USUÁRIO (UI) ---
 def main():
     df_raw = load_data('data/df_final.csv')
     df_filtrado_global = aplicar_filtros_globais(df_raw)
@@ -147,7 +127,7 @@ def main():
 def render_status_analysis(df):
     st.subheader("Distribuição dos Status das Reclamações")
 
-    # Determina o tipo de contagem baseado na checkbox
+    # Excluimos
     # if usar_fator_cumulativo:
     #     # Usa o peso do campo CASOS_POR_DIA
     #     status_counts = df.groupby('STATUS')['CASOS_POR_DIA'].sum().reset_index()
@@ -157,12 +137,10 @@ def render_status_analysis(df):
     #     # Para calcular resolvidas com peso
     #     resolvidas = df[df['STATUS'].str.contains('RESOLVIDO', case=False)]['CASOS_POR_DIA'].sum()
     # else:
-    # Considera apenas a frequência (peso 1 por registro)
     status_counts = df['STATUS'].value_counts().reset_index()
     status_counts.columns = ['STATUS', 'Quantidade']
     label_analise = "Frequência de Registros"
         
-    # Para calcular resolvidas por frequência
     resolvidas = df[df['STATUS'].str.contains('RESOLVIDO', case=False)].shape[0]
 
     total_reclamacoes = status_counts['Quantidade'].sum()
@@ -178,7 +156,6 @@ def render_status_analysis(df):
     st.markdown("---")
     
 
-    # Gráfico de Rosca
     fig = px.pie(
         status_counts,
         values='Quantidade',
@@ -198,22 +175,16 @@ def render_status_analysis(df):
 
     st.plotly_chart(fig, use_container_width=True)
 
-    # Tabela detalhada opcional
     with st.expander(f"Ver dados brutos de status ({label_analise})"):
         status_counts_display = status_counts.copy()
         status_counts_display['Quantidade'] = status_counts_display['Quantidade'].astype(int)
         st.table(status_counts_display.set_index('STATUS'))
-
-
 
 def render_statistical_textual_analysis(df):
     st.header("Análise Estatística: Status vs. Tamanho do Texto")
 
     df = df.copy()
 
-    # =========================
-    # PREPARAÇÃO DOS DADOS
-    # =========================
     df['DESCRICAO'] = df['DESCRICAO'].fillna('').astype(str)
     df['TAMANHO TEXTO'] = df['DESCRICAO'].str.len()
 
@@ -232,9 +203,7 @@ def render_statistical_textual_analysis(df):
         include_lowest=True
     )
 
-    # =========================
-    # MÉTRICAS GERAIS
-    # =========================
+  
     total_registros = len(df)
     media_tamanho = df['TAMANHO TEXTO'].mean()
     mediana_tamanho = df['TAMANHO TEXTO'].median()
@@ -246,9 +215,7 @@ def render_statistical_textual_analysis(df):
 
     st.markdown("---")
 
-    # =========================
-    # 2) BOXPLOT - STATUS VS TAMANHO
-    # =========================
+ 
     st.subheader("Boxplot: Tamanho do Texto por Status")
 
     fig_box = px.box(
@@ -273,9 +240,7 @@ def render_statistical_textual_analysis(df):
 
     st.plotly_chart(fig_box, use_container_width=True)
 
-    # =========================
-    # 3) STATUS VS FAIXA DE TEXTO (%)
-    # =========================
+    
     st.subheader("Status por Faixa de Tamanho do Texto (%)")
 
     cruzamento_desc_status = pd.crosstab(
@@ -307,9 +272,7 @@ def render_statistical_textual_analysis(df):
 
     st.plotly_chart(fig_stacked, use_container_width=True)
 
-    # =========================
-    # 4) TABELA RESUMO
-    # =========================
+ 
     st.subheader("Resumo Estatístico do Tamanho do Texto por Status")
 
     resumo_status = df.groupby('STATUS')['TAMANHO TEXTO'].agg([
@@ -325,9 +288,7 @@ def render_statistical_textual_analysis(df):
 
     st.dataframe(resumo_status, use_container_width=True, hide_index=True)
 
-    # =========================
-    # 5) TABELA PERCENTUAL
-    # =========================
+
     with st.expander("Ver tabela percentual: Status vs. Faixa de Texto"):
         tabela_exibir = pd.crosstab(
             df['FAIXA TEXTO'],
@@ -343,9 +304,6 @@ def render_geographical_heatmap(df):
     df = df.copy()
     df['DATA'] = pd.to_datetime(df['DATA'])
 
-    # =========================
-    # FILTRO TEMPORAL
-    # =========================
     tipo_filtro = st.selectbox(
         "Filtrar mapa por:",
         ["Ano", "Mês"]
@@ -385,9 +343,7 @@ def render_geographical_heatmap(df):
         st.warning("Não há dados disponíveis para o período selecionado.")
         return
 
-    # =========================
-    # BASE DE ESTADOS
-    # =========================
+
     todos_estados = [
         'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
         'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
@@ -395,9 +351,7 @@ def render_geographical_heatmap(df):
     ]
     df_base = pd.DataFrame({'id': todos_estados})
 
-    # =========================
-    # TIPO DE CONTAGEM
-    # =========================
+  
     if usar_fator_cumulativo:
         estado_counts = df_filtrado.groupby('ESTADO')['CASOS_POR_DIA'].sum().reset_index()
         label_analise = "Cumulativo (Casos por Dia)"
@@ -410,9 +364,6 @@ def render_geographical_heatmap(df):
 
     estado_counts = pd.merge(df_base, estado_counts, on='id', how='left').fillna(0)
 
-    # =========================
-    # GEOJSON
-    # =========================
     geojson_url = "https://raw.githubusercontent.com/codeforamerica/click_that_hood/master/public/data/brazil-states.geojson"
 
     fig = px.choropleth(
@@ -450,9 +401,6 @@ def render_geographical_heatmap(df):
 
     st.plotly_chart(fig, use_container_width=True)
 
-    # =========================
-    # ANÁLISE DE CONCENTRAÇÃO
-    # =========================
     df_sorted = estado_counts.sort_values(by='total', ascending=False)
     quantia_total = df_sorted['total'].sum()
 
@@ -484,9 +432,7 @@ def render_pareto_estados(df):
     df = df.copy()
     df['DATA'] = pd.to_datetime(df['DATA'])
 
-    # =========================
-    # FILTRO TEMPORAL
-    # =========================
+  
     tipo_filtro = st.selectbox(
         "Filtrar Pareto por:",
         ["Ano", "Mês"]
@@ -526,9 +472,7 @@ def render_pareto_estados(df):
         st.warning("Não há dados disponíveis para o período selecionado.")
         return
 
-    # =========================
-    # CONTAGEM POR ESTADO
-    # =========================
+  
     if usar_fator_cumulativo:
         estado_counts = df_filtrado.groupby('ESTADO')['CASOS_POR_DIA'].count().reset_index()
         label_analise = "Cumulativo (Casos por Dia)"
@@ -538,7 +482,6 @@ def render_pareto_estados(df):
 
     estado_counts.columns = ['id', 'total']
 
-    # Remover estados com zero ou nulos
     df_pareto = estado_counts.copy()
     df_pareto = df_pareto[df_pareto['total'] > 0].copy()
 
@@ -546,16 +489,13 @@ def render_pareto_estados(df):
         st.warning("Não há dados suficientes para gerar o gráfico de Pareto.")
         return
 
-    # =========================
-    # CÁLCULOS DE PARETO
-    # =========================
+
     df_pareto = df_pareto.sort_values(by='total', ascending=False).reset_index(drop=True)
 
     total_geral = df_pareto['total'].sum()
     df_pareto['percentual'] = (df_pareto['total'] / total_geral) * 100
     df_pareto['percentual_acumulado'] = df_pareto['percentual'].cumsum()
 
-    # Estados críticos até atingir ~80%
     estados_80 = df_pareto[df_pareto['percentual_acumulado'] <= 80]
 
     if len(estados_80) < len(df_pareto):
@@ -563,12 +503,9 @@ def render_pareto_estados(df):
 
     estados_criticos = estados_80['id'].tolist()
 
-    # =========================
-    # GRÁFICO DE PARETO
-    # =========================
+
     fig = go.Figure()
 
-    # Barras
     fig.add_trace(go.Bar(
         x=df_pareto['id'],
         y=df_pareto['total'],
@@ -579,7 +516,6 @@ def render_pareto_estados(df):
         hovertemplate='<b>%{x}</b><br>Quantidade: %{y}<extra></extra>'
     ))
 
-    # Linha acumulada
     fig.add_trace(go.Scatter(
         x=df_pareto['id'],
         y=df_pareto['percentual_acumulado'],
@@ -618,7 +554,6 @@ def render_pareto_estados(df):
         hovermode="x unified"
     )
 
-    # Linha horizontal de 80%
     fig.add_shape(
         type="line",
         x0=-0.5,
@@ -640,9 +575,7 @@ def render_pareto_estados(df):
 
     st.plotly_chart(fig, use_container_width=True)
 
-    # =========================
-    # INTERPRETAÇÃO
-    # =========================
+
     qtd_criticos = len(estados_criticos)
     perc_criticos = df_pareto[df_pareto['id'].isin(estados_criticos)]['percentual'].sum()
 
@@ -652,9 +585,6 @@ def render_pareto_estados(df):
         f"**{perc_criticos:.1f}%** do total de reclamações em **{titulo_periodo}**."
     )
 
-    # =========================
-    # TABELA
-    # =========================
     with st.expander("Ver tabela de Pareto por estado"):
         df_exibir = df_pareto[['id', 'total', 'percentual', 'percentual_acumulado']].copy()
         df_exibir.columns = ['Estado', 'Quantidade', '% Individual', '% Acumulado']
@@ -670,12 +600,10 @@ def render_temporal_analysis(df):
     df = df.copy()
     df['DATA'] = pd.to_datetime(df['DATA'])
 
-    # Consolidar por dia
     df = df.groupby(df['DATA'].dt.date)['CASOS_POR_DIA'].count().reset_index()
     df['DATA'] = pd.to_datetime(df['DATA'])
     df = df.sort_values('DATA')
 
-    # Garantir continuidade diária
     todas_datas = pd.date_range(df['DATA'].min(), df['DATA'].max(), freq='D')
     df = (
         df.set_index('DATA')
@@ -700,9 +628,7 @@ def render_temporal_analysis(df):
 
     frequencia = opcoes_janela[label_selecionada]
 
-    # =========================
-    # AGREGAÇÃO
-    # =========================
+    
     if frequencia == "MS":
         ano_referencia = df['DATA'].dt.year.mode()[0]
 
@@ -728,19 +654,14 @@ def render_temporal_analysis(df):
               .reset_index()
         )
 
-    # =========================
-    # REMOVER PONTOS ZERO
-    # =========================
+ 
     df_agregado = df_agregado[df_agregado['CASOS_POR_DIA'] > 0].copy()
 
-    # Evita erro caso tudo fique zerado
     if df_agregado.empty:
         st.warning("Não há dados positivos para exibir nessa agregação.")
         return
 
-    # =========================
-    # RÓTULOS DO EIXO X
-    # =========================
+  
     if frequencia == "MS":
         meses_pt = {
             1: "Jan", 2: "Fev", 3: "Mar", 4: "Abr",
@@ -774,16 +695,11 @@ def render_temporal_analysis(df):
             tickvals = df_agregado.iloc[indices]['DATA']
             ticktext = df_agregado.iloc[indices]['ROTULO_X']
 
-    # =========================
-    # PICO
-    # =========================
+
     pico_row = df_agregado.loc[df_agregado['CASOS_POR_DIA'].idxmax()]
     data_pico = pico_row['DATA']
     total_pico = int(pico_row['CASOS_POR_DIA'])
 
-    # =========================
-    # GRÁFICO DE LINHA
-    # =========================
     fig = px.line(
         df_agregado,
         x='DATA',
@@ -817,9 +733,6 @@ def render_temporal_analysis(df):
 
     st.plotly_chart(fig, use_container_width=True)
 
-    # =========================
-    # TEXTO INFORMATIVO
-    # =========================
     if frequencia == "MS":
         meses_pt_extenso = {
             1: "Janeiro", 2: "Fevereiro", 3: "Março", 4: "Abril",
@@ -845,7 +758,6 @@ def render_temporal_analysis(df):
     else:
         st.info(
             f"**Maior volume em {label_selecionada}:** "
-            # f"{data_pico.strftime('%d/%m/%Y')} "
             f"registrou **{total_pico}** reclamações agregadas."
         )
 
@@ -891,7 +803,6 @@ def render_filtered_segmented_analysis(df):
         color_continuous_scale="Reds",
         template="plotly_dark"
     )
-    # --- FIM DO TRECHO ALTERADO ---
 
     fig.update_layout(yaxis={'categoryorder': 'total ascending'}, height=450)
     st.plotly_chart(fig, use_container_width=True)
@@ -901,12 +812,10 @@ def render_filtered_segmented_analysis(df):
 
 def render_textual_analysis(df):
 
-    # 1. Tratamento de dados nulos e concatenação do texto
     textos = df['DESCRICAO'].dropna().astype(str)
     texto_completo = " ".join(textos).lower()
 
-    # ALTERAR
-    # 2. Definição de Stopwords em Português
+  
     stopwords_pt = set([
         "a", "e", "o", "que", "de", "do", "da", "em", "um", "para", "é", "com",
         "não", "uma", "os", "no", "se", "na", "por", "mais", "as", "dos",
@@ -920,24 +829,21 @@ def render_textual_analysis(df):
         "meus", "dia", "vou", "seria", "momento", "fui", "pra", "mail", "qual", "fiz", "coisa", "sou", "havia", "pois", "estava"
     ])
 
-    # Opcional: Adicionar termos genéricos do seu negócio que sujam a análise
     stopwords_pt.update(["pão", "açúcar", "pao", "acucar", "cliente", "loja", "pedido", "reclame"])
 
-    # 3. Geração da Nuvem de Palavras
     wordcloud = WordCloud(
         width=800,
         height=400,
-        background_color='black',  # Combina com o plotly_dark
-        colormap='Reds',  # Mantém a paleta de cores consistente
+        background_color='black',  
+        colormap='Reds',  
         stopwords=stopwords_pt,
         max_words=100,
-        collocations=False  # Evita duplicidade de palavras compostas
+        collocations=False  
     ).generate(texto_completo)
 
-    # 4. Renderização no Streamlit via Matplotlib
     fig, ax = plt.subplots(figsize=(10, 5), facecolor='black')
     ax.imshow(wordcloud, interpolation='bilinear')
-    ax.axis("off")  # Remove os eixos do gráfico
+    ax.axis("off")  
 
     st.pyplot(fig)
 
@@ -950,16 +856,13 @@ def render_efficiency_analysis(df):
     avaliando a eficiência da empresa na solução de diferentes tipos de problemas.
     """)
 
-    # Preparar dados
     df_copy = df.copy()
     df_copy['CATEGORIA'] = df_copy['CATEGORIA'].apply(
         lambda x: ast.literal_eval(x) if isinstance(x, str) and x.startswith('[') else x
     )
 
-    # Criar coluna binária para "resolvido" ANTES da explosão
     df_copy['RESOLVIDO'] = df_copy['STATUS'].str.contains('RESOLVIDO', case=False, na=False).astype(int)
 
-    # Determina o peso baseado na checkbox ANTES da explosão
     if usar_fator_cumulativo:
         label_analise = "Cumulativo (Casos por Dia)"
         df_copy['PESO'] = df_copy['CASOS_POR_DIA']
@@ -967,21 +870,16 @@ def render_efficiency_analysis(df):
         label_analise = "Frequência de Registros"
         df_copy['PESO'] = 1
 
-    # Calcular peso resolvido (PESO * RESOLVIDO)
     df_copy['PESO_RESOLVIDO'] = df_copy['PESO'] * df_copy['RESOLVIDO']
 
-    # AGORA explode as categorias
     df_exploded = df_copy.explode('CATEGORIA')
 
-    # Filtrar categorias irrelevantes
     categorias_para_descartar = ['PÃO DE AÇÚCAR']
     df_filtrado = df_exploded[~df_exploded['CATEGORIA'].str.upper().isin(categorias_para_descartar)]
 
-    # Agregar por categoria
     cat_total = df_filtrado.groupby('CATEGORIA')['PESO'].sum()
     cat_resolvidas = df_filtrado.groupby('CATEGORIA')['PESO_RESOLVIDO'].sum()
 
-    # Criar DataFrame com as estatísticas
     eficiencia = pd.DataFrame({
         'Total': cat_total,
         'Resolvidas': cat_resolvidas
@@ -990,10 +888,8 @@ def render_efficiency_analysis(df):
     eficiencia['Não Resolvidas'] = eficiencia['Total'] - eficiencia['Resolvidas']
     eficiencia['Taxa de Resolução (%)'] = (eficiencia['Resolvidas'] / eficiencia['Total'] * 100).round(2)
 
-    # Ordenar por total e pegar top 15
     eficiencia = eficiencia.sort_values('Total', ascending=False).head(15)
 
-    # Métricas gerais
     col1, col2, col3 = st.columns(3)
 
     total_geral = eficiencia['Total'].sum()
@@ -1006,7 +902,6 @@ def render_efficiency_analysis(df):
 
     st.markdown("---")
 
-    # Gráfico de Taxa de Resolução
     fig = px.bar(
         eficiencia.reset_index(),
         x='Taxa de Resolução (%)',
@@ -1031,7 +926,6 @@ def render_efficiency_analysis(df):
 
     st.plotly_chart(fig, use_container_width=True)
 
-    # Tabela detalhada
     st.markdown("---")
     with st.expander(f"Ver tabela completa ({label_analise})"):
         tabela_display = eficiencia.copy()
