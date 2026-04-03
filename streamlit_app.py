@@ -20,7 +20,8 @@ aba_selecionada = st.sidebar.radio(
         "Categorias Principais",
         "Status das Reclamações",
         "Eficiência de Resolução",
-        "Análise de Texto"
+        "Análise Estatística de Textos",
+        "Mineração de Texto"
     ]
 )
 
@@ -35,43 +36,112 @@ def load_data(path):
     data = pd.read_csv(path)
     return data
 
+# FUNÇÃO DOS FILTROS
+def aplicar_filtros_globais(df):
+    df = df.copy()
 
-# --- LÓGICA DE PROCESSAMENTO ---
-def process_data(df):
-    # Insira aqui suas transformações, limpeza e engenharia de features
-    return df
+    # Garantir que descrição seja string
+    df['DESCRICAO'] = df['DESCRICAO'].fillna('').astype(str)
+
+    # Criar coluna com tamanho do texto
+    df['TAMANHO_TEXTO'] = df['DESCRICAO'].str.len()
+
+    # Criar faixas de tamanho
+    bins = [0, 100, 300, 600, float('inf')]
+    labels = ['Curto (0-100)', 'Médio (101-300)', 'Longo (301-600)', 'Muito Longo (600+)']
+
+    df['FAIXA_TEXTO'] = pd.cut(
+        df['TAMANHO_TEXTO'],
+        bins=bins,
+        labels=labels,
+        include_lowest=True
+    )
+
+    st.sidebar.markdown("## Filtros Globais")
+
+    # =========================
+    # FILTRO DE ESTADO
+    # =========================
+    estados = sorted(df['ESTADO'].dropna().unique())
+    estados_selecionados = st.sidebar.multiselect(
+        "Estado",
+        options=estados,
+        default=estados
+    )
+
+    # =========================
+    # FILTRO DE STATUS
+    # =========================
+    status_opcoes = sorted(df['STATUS'].dropna().unique())
+    status_selecionados = st.sidebar.multiselect(
+        "Status",
+        options=status_opcoes,
+        default=status_opcoes
+    )
+
+    # =========================
+    # FILTRO DE TAMANHO DO TEXTO
+    # =========================
+    faixas_texto = labels
+    faixas_selecionadas = st.sidebar.multiselect(
+        "Faixa de tamanho do texto",
+        options=faixas_texto,
+        default=faixas_texto
+    )
+
+    # =========================
+    # APLICAR FILTROS
+    # =========================
+    df_filtrado = df[
+        (df['ESTADO'].isin(estados_selecionados)) &
+        (df['STATUS'].isin(status_selecionados)) &
+        (df['FAIXA_TEXTO'].astype(str).isin(faixas_selecionadas))
+    ].copy()
+
+    return df_filtrado
+
+
+# # --- LÓGICA DE PROCESSAMENTO ---
+# def process_data(df):
+#     # Insira aqui suas transformações, limpeza e engenharia de features
+#     return df
 
 
 # --- INTERFACE DO USUÁRIO (UI) ---
 def main():
     df_raw = load_data('data/df_final.csv')
+    df_filtrado_global = aplicar_filtros_globais(df_raw)
 
     if aba_selecionada == "Evolução Temporal":
         st.header("QA")
-        render_temporal_analysis(df_raw)
+        render_temporal_analysis(df_filtrado_global)
 
     elif aba_selecionada == "Distribuição Geográfica":
         st.header("QA")
-        render_geographical_heatmap(df_raw)
+        render_geographical_heatmap(df_filtrado_global)
         
     elif aba_selecionada == "Distribuição Espacial":
         st.header("QA")
-        render_pareto_estados(df_raw)
+        render_pareto_estados(df_filtrado_global)
 
     elif aba_selecionada == "Categorias Principais":
         st.header("QA")
-        render_filtered_segmented_analysis(df_raw)
+        render_filtered_segmented_analysis(df_filtrado_global)
 
     elif aba_selecionada == "Status das Reclamações":
-        render_status_analysis(df_raw)
+        render_status_analysis(df_filtrado_global)
 
     elif aba_selecionada == "Eficiência de Resolução":
         st.header("TODO")
-        render_efficiency_analysis(df_raw)
+        render_efficiency_analysis(df_filtrado_global)
 
-    elif aba_selecionada == "Análise de Texto":
+    elif aba_selecionada == "Análise Estatística de Textos":
+        st.header("QA")
+        render_statistical_textual_analysis(df_filtrado_global)
+        
+    elif aba_selecionada == "Mineração de Texto":
         st.header("WIP")
-        render_textual_analysis(df_raw)
+        render_textual_analysis(df_filtrado_global)
 
 
 def render_status_analysis(df):
@@ -134,6 +204,138 @@ def render_status_analysis(df):
         status_counts_display['Quantidade'] = status_counts_display['Quantidade'].astype(int)
         st.table(status_counts_display.set_index('STATUS'))
 
+
+
+def render_statistical_textual_analysis(df):
+    st.header("Análise Estatística: Status vs. Tamanho do Texto")
+
+    df = df.copy()
+
+    # =========================
+    # PREPARAÇÃO DOS DADOS
+    # =========================
+    df['DESCRICAO'] = df['DESCRICAO'].fillna('').astype(str)
+    df['TAMANHO TEXTO'] = df['DESCRICAO'].str.len()
+
+    bins = [0, 100, 300, 600, float('inf')]
+    labels = [
+        'Curto (0–100)',
+        'Médio (101–300)',
+        'Longo (301–600)',
+        'Muito Longo (601+)'
+    ]
+
+    df['FAIXA TEXTO'] = pd.cut(
+        df['TAMANHO TEXTO'],
+        bins=bins,
+        labels=labels,
+        include_lowest=True
+    )
+
+    # =========================
+    # MÉTRICAS GERAIS
+    # =========================
+    total_registros = len(df)
+    media_tamanho = df['TAMANHO TEXTO'].mean()
+    mediana_tamanho = df['TAMANHO TEXTO'].median()
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Total de Reclamações", f"{total_registros:,}")
+    col2.metric("Média de Caracteres", f"{media_tamanho:.0f}")
+    col3.metric("Mediana de Caracteres", f"{mediana_tamanho:.0f}")
+
+    st.markdown("---")
+
+    # =========================
+    # 2) BOXPLOT - STATUS VS TAMANHO
+    # =========================
+    st.subheader("Boxplot: Tamanho do Texto por Status")
+
+    fig_box = px.box(
+        df,
+        x='STATUS',
+        y='TAMANHO TEXTO',
+        color='STATUS',
+        points='outliers',
+        title="Distribuição do Tamanho do Texto por Status",
+        labels={
+            'STATUS': 'Status',
+            'TAMANHO TEXTO': 'Quantidade de Caracteres'
+        },
+        template="plotly_dark"
+    )
+
+    fig_box.update_layout(
+        height=600,
+        xaxis_tickangle=-35,
+        showlegend=False
+    )
+
+    st.plotly_chart(fig_box, use_container_width=True)
+
+    # =========================
+    # 3) STATUS VS FAIXA DE TEXTO (%)
+    # =========================
+    st.subheader("Status por Faixa de Tamanho do Texto (%)")
+
+    cruzamento_desc_status = pd.crosstab(
+        df['FAIXA TEXTO'],
+        df['STATUS'],
+        normalize='index'
+    ) * 100
+
+    cruzamento_desc_status = cruzamento_desc_status.reset_index()
+
+    fig_stacked = px.bar(
+        cruzamento_desc_status,
+        x='FAIXA TEXTO',
+        y=cruzamento_desc_status.columns[1:],
+        title="Distribuição Percentual dos Status por Faixa de Texto",
+        labels={
+            'value': 'Percentual (%)',
+            'FAIXA TEXTO': 'Faixa de Tamanho do Texto',
+            'variable': 'Status'
+        },
+        template="plotly_dark"
+    )
+
+    fig_stacked.update_layout(
+        barmode='stack',
+        height=600,
+        xaxis_tickangle=-20
+    )
+
+    st.plotly_chart(fig_stacked, use_container_width=True)
+
+    # =========================
+    # 4) TABELA RESUMO
+    # =========================
+    st.subheader("Resumo Estatístico do Tamanho do Texto por Status")
+
+    resumo_status = df.groupby('STATUS')['TAMANHO TEXTO'].agg([
+        'count', 'mean', 'median', 'min', 'max'
+    ]).reset_index()
+
+    resumo_status.columns = [
+        'Status', 'Quantidade', 'Média', 'Mediana', 'Mínimo', 'Máximo'
+    ]
+
+    resumo_status['Média'] = resumo_status['Média'].round(2)
+    resumo_status['Mediana'] = resumo_status['Mediana'].round(2)
+
+    st.dataframe(resumo_status, use_container_width=True, hide_index=True)
+
+    # =========================
+    # 5) TABELA PERCENTUAL
+    # =========================
+    with st.expander("Ver tabela percentual: Status vs. Faixa de Texto"):
+        tabela_exibir = pd.crosstab(
+            df['FAIXA TEXTO'],
+            df['STATUS'],
+            normalize='index'
+        ) * 100
+
+        st.dataframe(tabela_exibir.round(2), use_container_width=True)
 
 def render_geographical_heatmap(df):
     st.header("Distribuição geográfica das reclamações")
